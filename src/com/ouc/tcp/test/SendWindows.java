@@ -43,7 +43,7 @@ public class SendWindows {
         if(this.empty()||this.allSent()){
             return;
         }
-        int now = getIndex(rear);
+        int now = getIndex(nextIndex);
         TCP_PACKET packet = windows[now].getPacket();
         windows[now].scheduleTimer(new UDT_RetransTask(client,packet),delay,period);
         nextIndex++;
@@ -57,7 +57,7 @@ public class SendWindows {
                 break;
             }
         }
-        while(!this.empty() && windows[head].isAcked()){
+        while(!this.empty() && windows[getIndex(head)].isAcked()){
             int now = getIndex(head);
             windows[now].reset();
             head++;
