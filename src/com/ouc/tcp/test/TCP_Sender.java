@@ -11,11 +11,18 @@ import com.ouc.tcp.tool.TCP_TOOL;
 
 import java.util.Scanner;
 
+enum WindowsStatus{
+	NOT_FULL,
+	FULL
+}
+
 public class TCP_Sender extends TCP_Sender_ADT {
 	
 	private TCP_PACKET tcpPack;	//待发送的TCP数据报
 	private volatile int flag = 0;
-	UDT_Timer timer;
+
+	private SendWindows windows = new SendWindows(8);
+	//UDT_Timer timer;
 
 	/*构造函数*/
 	public TCP_Sender() {
@@ -34,18 +41,29 @@ public class TCP_Sender extends TCP_Sender_ADT {
 		//更新带有checksum的TCP 报文头		
 		tcpH.setTh_sum(CheckSum.computeChkSum(tcpPack));
 		tcpPack.setTcpH(tcpH);
-		
+
+		if(windows.full()){
+			this.flag = WindowsStatus.FULL.ordinal();
+		}
+		while(this.flag == WindowsStatus.FULL.ordinal());
+
+		try {
+			windows.pushPacket(tcpPack.clone());
+		} catch (CloneNotSupportedException e) {
+			throw new RuntimeException(e);
+		}
+		windows.sendPacket(this,client,1000,1000);
 		//发送TCP数据报
-		udt_send(tcpPack);
-		flag = 0;
+//		udt_send(tcpPack);
+//		flag = 0;
 
 		//计时器
-		timer = new UDT_Timer();
-		UDT_RetransTask reTrans = new UDT_RetransTask(client,tcpPack);
-		timer.schedule(reTrans,1000,1000);
+//		timer = new UDT_Timer();
+//		UDT_RetransTask reTrans = new UDT_RetransTask(client,tcpPack);
+//		timer.schedule(reTrans,1000,1000);
 		//等待ACK报文
 		//waitACK();
-		while (flag==0);
+		//while (flag==0);
 	}
 	
 	@Override
@@ -65,13 +83,17 @@ public class TCP_Sender extends TCP_Sender_ADT {
 		//循环检查确认号对列中是否有新收到的ACK		
 		if(!ackQueue.isEmpty()){
 			int currentAck=ackQueue.poll();
-			// System.out.println("CurrentAck: "+currentAck);
-			if (currentAck == tcpPack.getTcpH().getTh_seq()){
-				System.out.println("Clear: "+tcpPack.getTcpH().getTh_seq());
-				flag = 1;
-				timer.cancel();
-				//break;
+			windows.setAcked(currentAck);
+			if(!windows.full()){
+				flag = WindowsStatus.NOT_FULL.ordinal();
 			}
+			// System.out.println("CurrentAck: "+currentAck);
+//			if (currentAck == tcpPack.getTcpH().getTh_seq()){
+//				System.out.println("Clear: "+tcpPack.getTcpH().getTh_seq());
+//				flag = 1;
+//				timer.cancel();
+//				//break;
+//			}
 		}
 	}
 
