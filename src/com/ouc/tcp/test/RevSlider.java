@@ -17,7 +17,7 @@ public class RevSlider {
 
     public void reset(){
         this.packet = null;
-        this .flag = RevFlag.WAIT.ordinal();
+        this.flag = RevFlag.WAIT.ordinal();
     }
 
     public TCP_PACKET getPacket() {

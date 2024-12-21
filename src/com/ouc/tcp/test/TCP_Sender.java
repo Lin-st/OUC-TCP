@@ -44,6 +44,7 @@ public class TCP_Sender extends TCP_Sender_ADT {
 
 		if(windows.full()){
 			this.flag = WindowsStatus.FULL.ordinal();
+			windows.sendPacket(this,client,1000,1000);
 		}
 		while(this.flag == WindowsStatus.FULL.ordinal());
 
@@ -52,18 +53,7 @@ public class TCP_Sender extends TCP_Sender_ADT {
 		} catch (CloneNotSupportedException e) {
 			throw new RuntimeException(e);
 		}
-		windows.sendPacket(this,client,1000,1000);
-		//发送TCP数据报
-//		udt_send(tcpPack);
-//		flag = 0;
 
-		//计时器
-//		timer = new UDT_Timer();
-//		UDT_RetransTask reTrans = new UDT_RetransTask(client,tcpPack);
-//		timer.schedule(reTrans,1000,1000);
-		//等待ACK报文
-		//waitACK();
-		//while (flag==0);
 	}
 	
 	@Override
@@ -87,13 +77,7 @@ public class TCP_Sender extends TCP_Sender_ADT {
 			if(!windows.full()){
 				flag = WindowsStatus.NOT_FULL.ordinal();
 			}
-			// System.out.println("CurrentAck: "+currentAck);
-//			if (currentAck == tcpPack.getTcpH().getTh_seq()){
-//				System.out.println("Clear: "+tcpPack.getTcpH().getTh_seq());
-//				flag = 1;
-//				timer.cancel();
-//				//break;
-//			}
+
 		}
 	}
 

@@ -57,7 +57,7 @@ public class SendSlider {
 
     public void acked(){
         this.flag = SendFlag.ACK.ordinal();
-        this.timer.cancel();
+        //this.timer.cancel();
     }
 
     public void scheduleTimer(UDT_RetransTask retransTask, int delay, int period) {

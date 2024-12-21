@@ -6,8 +6,10 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.TimerTask;
 
 import com.ouc.tcp.client.TCP_Receiver_ADT;
+import com.ouc.tcp.client.UDT_Timer;
 import com.ouc.tcp.message.*;
 import com.ouc.tcp.tool.TCP_TOOL;
 
@@ -15,6 +17,7 @@ public class TCP_Receiver extends TCP_Receiver_ADT {
 	
 	private TCP_PACKET ackPack;	//回复的ACK报文段
 	private RevWindows windows = new RevWindows(8);
+	private UDT_Timer timer = new UDT_Timer();
 	int sequence=1;//用于记录当前待接收的包序号，注意包序号不完全是
 	int pre_sequence=-1;
 		
@@ -27,25 +30,35 @@ public class TCP_Receiver extends TCP_Receiver_ADT {
 	@Override
 	//接收到数据报：检查校验和，设置回复的ACK报文段
 	public void rdt_recv(TCP_PACKET recvPack) {
+		timer.schedule(new TimerTask() {
+			@Override
+			public void run() {
+				reply(ackPack);
+				timer.cancel();
+				timer = new UDT_Timer();
+			}
+		}, 100);
 		//检查校验码，生成ACK
 		if(CheckSum.computeChkSum(recvPack) == recvPack.getTcpH().getTh_sum()) {
 			//生成ACK报文段（设置确认号）
 			int packetFlag = windows.packetFlag(recvPack);
-			if(packetFlag != AckFlag.UNORDERED.ordinal()){
-				tcpH.setTh_ack(recvPack.getTcpH().getTh_seq());
-				ackPack = new TCP_PACKET(tcpH, tcpS, recvPack.getSourceAddr());
-				tcpH.setTh_sum(CheckSum.computeChkSum(ackPack));
-				//回复ACK报文段
-				reply(ackPack);
-			}
 			if(packetFlag == AckFlag.NEED.ordinal()){
-				windows.deliver(dataQueue);
+				TCP_PACKET packet = windows.getPacket();
+				while(packet!=null) {
+					dataQueue.add(packet.getTcpS().getData());
+					tcpH.setTh_ack(packet.getTcpH().getTh_seq());
+					ackPack = new TCP_PACKET(tcpH, tcpS, recvPack.getSourceAddr());
+					tcpH.setTh_sum(CheckSum.computeChkSum(ackPack));
+					packet = windows.getPacket();
+					//回复ACK报文段
+					//reply(ackPack);
+				}
 			}
 		}
 		System.out.println();
 		//交付数据（每20组数据交付一次）
 		//if(dataQueue.size() == 20)
-			deliver_data();
+		deliver_data();
 	}
 
 	@Override
