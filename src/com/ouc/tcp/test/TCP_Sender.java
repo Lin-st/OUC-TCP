@@ -44,7 +44,6 @@ public class TCP_Sender extends TCP_Sender_ADT {
 
 		if(windows.full()){
 			this.flag = WindowsStatus.FULL.ordinal();
-			windows.sendPacket(this,client,1000,1000);
 		}
 		while(this.flag == WindowsStatus.FULL.ordinal());
 
@@ -53,6 +52,7 @@ public class TCP_Sender extends TCP_Sender_ADT {
 		} catch (CloneNotSupportedException e) {
 			throw new RuntimeException(e);
 		}
+		windows.sendPacket(this,client,1000,1000);
 
 	}
 	

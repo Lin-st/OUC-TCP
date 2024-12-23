@@ -37,7 +37,7 @@ public class TCP_Receiver extends TCP_Receiver_ADT {
 				timer.cancel();
 				timer = new UDT_Timer();
 			}
-		}, 100);
+		}, 500);
 		//检查校验码，生成ACK
 		if(CheckSum.computeChkSum(recvPack) == recvPack.getTcpH().getTh_sum()) {
 			//生成ACK报文段（设置确认号）
@@ -53,6 +53,9 @@ public class TCP_Receiver extends TCP_Receiver_ADT {
 					//回复ACK报文段
 					//reply(ackPack);
 				}
+			}
+			else if(packetFlag == AckFlag.UNORDERED.ordinal()){
+				reply(ackPack);
 			}
 		}
 		System.out.println();

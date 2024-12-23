@@ -13,7 +13,8 @@ public class SendWindows {
     private int rear;
     private int nextIndex;//下一个发送的序号
     private UDT_Timer timer;
-
+    private int preCount = 0;
+    private int preSeq = -10086;
 
     private class GBNTask extends TimerTask {
 
@@ -101,5 +102,15 @@ public class SendWindows {
             now = getIndex(head);
         }
         resetTime();
+        if(seq == preSeq){
+            preCount++;
+        }
+        else {
+            preSeq = seq;
+            preCount = 1;
+        }
+        if(preCount >= 3){
+            task.sender.udt_send(windows[getIndex(head)].getPacket());
+        }
     }
 }
