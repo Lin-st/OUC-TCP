@@ -18,6 +18,7 @@ public class SendWindows {
     private UDT_Timer timer;
     private int preCount = 0;
     private int preSeq = -10086;
+    boolean quickRe = false;
 
     private class GBNTask extends TimerTask {
 
@@ -38,14 +39,31 @@ public class SendWindows {
         @Override
         public void run() {
             //拥塞，乘法减小
+            int preC = cwnd;
             ssthresh = (cwnd+1)/2;
-            windows.windows[0].setPacket(windows.windows[getIndex(head)].getPacket());
-            for (int i = 1; i < windows.windows.length; i++) {
-                windows.windows[i] = new SendSlider();
+            cwnd = ssthresh;
+            SendSlider[] w=new SendSlider[preC];
+            for (int i = 0; i < w.length; i++) {
+                w[i] = new SendSlider();
             }
-            cwnd = 1;
-            head = 0;
-            rear = head+1;
+            if(rear - head > cwnd){
+                rear = head + cwnd;
+            }
+            for(int i=head;i<rear;i++){
+                w[i%preC].setPacket(windows.windows[i%preC].getPacket());
+            }
+            for(int i=head;i<rear;i++){
+                int now = getIndex(i);
+                windows.windows[now].setPacket(w[i%preC].getPacket());
+            }
+
+//            windows.windows[0].setPacket(windows.windows[getIndex(head)].getPacket());
+//            for (int i = 1; i < windows.windows.length; i++) {
+//                windows.windows[i] = new SendSlider();
+//            }
+//            cwnd = ssthresh;
+//            head = 0;
+//            rear = head+1;
             windows.nextIndex = head;
             while (windows.nextIndex < windows.rear){
                 windows.sendPacket(sender,client,delay,period);
@@ -113,20 +131,22 @@ public class SendWindows {
     }
     public void setAcked(int seq){
         int now = getIndex(head);
+        boolean flag = false;
         while(head < rear && !windows[now].isAcked() && windows[now].getPacket().getTcpH().getTh_seq() <= seq){
             windows[now].acked();
             head++;
             now = getIndex(head);
         }
+
         //慢开始和拥塞避免
         int preC = cwnd;
         if(cwnd<max_size){
-            if(2*cwnd<ssthresh)
-                cwnd*=2;
-            else if(cwnd>=ssthresh)
-                cwnd+=1;
+            if (quickRe || cwnd >= ssthresh)
+                cwnd += 1;
+            else if (2 * cwnd < ssthresh)
+                cwnd *= 2;
             else
-                cwnd=ssthresh;
+                cwnd = ssthresh;
         }
         SendSlider[] w=new SendSlider[preC];
         for (int i = 0; i < w.length; i++) {
@@ -156,6 +176,20 @@ public class SendWindows {
             }
             task.sender.udt_send(windows[getIndex(head)].getPacket());
             preCount = 0;
+            quickRe = true;
+            preC = cwnd;
+            ssthresh = (cwnd+1)/2;
+            cwnd = ssthresh;
+            if(rear - head >cwnd){
+                rear = head + cwnd;
+                for(int i=head;i<rear;i++){
+                    w[i%preC].setPacket(windows[i%preC].getPacket());
+                }
+                for(int i=head;i<rear;i++){
+                    now = getIndex(i);
+                    windows[now].setPacket(w[i%preC].getPacket());
+                }
+            }
         }
     }
 }
