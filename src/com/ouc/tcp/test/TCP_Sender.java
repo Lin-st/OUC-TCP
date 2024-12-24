@@ -21,7 +21,7 @@ public class TCP_Sender extends TCP_Sender_ADT {
 	private TCP_PACKET tcpPack;	//待发送的TCP数据报
 	private volatile int flag = 0;
 
-	private SendWindows windows = new SendWindows(8);
+	private SendWindows windows = new SendWindows(32);
 	//UDT_Timer timer;
 
 	/*构造函数*/
@@ -52,7 +52,7 @@ public class TCP_Sender extends TCP_Sender_ADT {
 		} catch (CloneNotSupportedException e) {
 			throw new RuntimeException(e);
 		}
-		windows.sendPacket(this,client,1000,1000);
+		windows.sendPacket(this,client,2000,2000);
 
 	}
 	

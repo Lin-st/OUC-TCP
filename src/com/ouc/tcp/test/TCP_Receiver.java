@@ -16,7 +16,7 @@ import com.ouc.tcp.tool.TCP_TOOL;
 public class TCP_Receiver extends TCP_Receiver_ADT {
 	
 	private TCP_PACKET ackPack;	//回复的ACK报文段
-	private RevWindows windows = new RevWindows(8);
+	private RevWindows windows = new RevWindows(32);
 	private UDT_Timer timer = new UDT_Timer();
 	int sequence=1;//用于记录当前待接收的包序号，注意包序号不完全是
 	int pre_sequence=-1;
@@ -54,7 +54,7 @@ public class TCP_Receiver extends TCP_Receiver_ADT {
 					//reply(ackPack);
 				}
 			}
-			else if(packetFlag == AckFlag.UNORDERED.ordinal()){
+			else {
 				reply(ackPack);
 			}
 		}

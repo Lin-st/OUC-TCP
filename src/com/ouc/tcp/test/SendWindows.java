@@ -7,7 +7,10 @@ import com.ouc.tcp.message.TCP_PACKET;
 import java.util.TimerTask;
 
 public class SendWindows {
-    private int size;
+    private int max_size;
+    private int cwnd = 1;
+    private int ssthresh = 16;
+    //private int size;
     private SendSlider[] windows;
     private int head;
     private int rear;
@@ -34,6 +37,15 @@ public class SendWindows {
 
         @Override
         public void run() {
+            //拥塞，乘法减小
+            ssthresh = (cwnd+1)/2;
+            windows.windows[0].setPacket(windows.windows[getIndex(head)].getPacket());
+            for (int i = 1; i < windows.windows.length; i++) {
+                windows.windows[i] = new SendSlider();
+            }
+            cwnd = 1;
+            head = 0;
+            rear = head+1;
             windows.nextIndex = head;
             while (windows.nextIndex < windows.rear){
                 windows.sendPacket(sender,client,delay,period);
@@ -43,7 +55,7 @@ public class SendWindows {
     private GBNTask task;
 
     public SendWindows(int size){
-        this.size = size;
+        this.max_size = size;
         this.windows = new SendSlider[size];
         for (int i = 0; i < size; i++) {
             windows[i] = new SendSlider();
@@ -54,10 +66,10 @@ public class SendWindows {
         this.timer = new UDT_Timer();
     }
     public int getIndex(int now){
-        return now % size;
+        return now % cwnd;//size;
     }
     public boolean full(){
-        return head + size == rear;
+        return head + cwnd == rear;//size == rear;
     }
     public boolean empty(){
         return head == rear;
@@ -80,9 +92,14 @@ public class SendWindows {
         rear++;
     }
     public void sendPacket(TCP_Sender sender, Client client,int delay,int period){
-        if(this.empty()||this.allSent()){
+        if(this.allSent()){
             return;
         }
+        else if(this.empty()){
+            timer.cancel();
+            return;
+        }
+
         int now = getIndex(nextIndex);
         TCP_PACKET packet = windows[now].getPacket();
         if(nextIndex == head){
@@ -96,12 +113,35 @@ public class SendWindows {
     }
     public void setAcked(int seq){
         int now = getIndex(head);
-        while(!windows[now].isAcked() && windows[now].getPacket().getTcpH().getTh_seq() <= seq && head < rear){
+        while(head < rear && !windows[now].isAcked() && windows[now].getPacket().getTcpH().getTh_seq() <= seq){
             windows[now].acked();
             head++;
             now = getIndex(head);
         }
+        //慢开始和拥塞避免
+        int preC = cwnd;
+        if(cwnd<max_size){
+            if(2*cwnd<ssthresh)
+                cwnd*=2;
+            else if(cwnd>=ssthresh)
+                cwnd+=1;
+            else
+                cwnd=ssthresh;
+        }
+        SendSlider[] w=new SendSlider[preC];
+        for (int i = 0; i < w.length; i++) {
+            w[i] = new SendSlider();
+        }
+        for(int i=head;i<rear;i++){
+            w[i%preC].setPacket(windows[i%preC].getPacket());
+        }
+        for(int i=head;i<rear;i++){
+            now = getIndex(i);
+            windows[now].setPacket(w[i%preC].getPacket());
+        }
+
         resetTime();
+
         if(seq == preSeq){
             preCount++;
         }
@@ -110,7 +150,12 @@ public class SendWindows {
             preCount = 1;
         }
         if(preCount >= 3){
+            if(empty()){
+                timer.cancel();
+                return;
+            }
             task.sender.udt_send(windows[getIndex(head)].getPacket());
+            preCount = 0;
         }
     }
 }
